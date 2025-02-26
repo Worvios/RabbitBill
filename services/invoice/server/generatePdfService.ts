@@ -19,16 +19,21 @@ export async function generatePdfService(req: NextRequest) {
     if (ENV === "production") {
       // In production, use puppeteer-core and @sparticuz/chromium
       const puppeteerCore = await import("puppeteer-core");
+      // Call the executablePath function to get the chromium path
+      const execPath = await chromium.executablePath();
+      if (!execPath) {
+        throw new Error("Chromium executable path not found");
+      }
       browser = await puppeteerCore.launch({
         args: chromium.args,
         defaultViewport: chromium.defaultViewport,
-        executablePath: await chromium.executablePath, // Fixed: await the property directly
+        executablePath: execPath,
         headless: true,
-        // Casting to 'any' to bypass TS type errors if necessary
+        // Cast as any to bypass TypeScript type issues
         ignoreHTTPSErrors: true,
       } as any);
     } else {
-      // In development, use full puppeteer
+      // In development, use the full puppeteer package
       const puppeteer = await import("puppeteer");
       browser = await puppeteer.launch({
         args: ["--no-sandbox", "--disable-setuid-sandbox"],
@@ -39,21 +44,17 @@ export async function generatePdfService(req: NextRequest) {
     if (!browser) throw new Error("Failed to launch browser");
 
     const page = await browser.newPage();
-
-    // Emulate print media and set the page content
     await page.emulateMediaType("print");
     await page.setContent(htmlTemplate, {
       waitUntil: "networkidle0",
       timeout: 30000,
     });
 
-    // Add Tailwind CSS and wait for it to load
     await Promise.all([
       page.addStyleTag({ url: TAILWIND_CDN }),
       page.waitForNetworkIdle(),
     ]);
 
-    // Generate the PDF
     const pdf = await page.pdf({
       format: "a4",
       printBackground: true,
@@ -65,7 +66,6 @@ export async function generatePdfService(req: NextRequest) {
       },
     });
 
-    // Cleanup: Close all pages and the browser
     const pages = await browser.pages();
     await Promise.all(pages.map((pg) => pg.close()));
     await browser.close();

@@ -21,7 +21,7 @@ export const JSONLD = {
   keywords: ROOTKEYWORDS,
   url: BASE_URL,
   image:
-    "https://invoify.vercel.app/_next/static/media/invoify-logo.7ef8fa33.svg",
+    "https://github.com/Worvios/RabbitBill/blob/aab927ade2cf26e4a6a31ac7421587bfc02ad123/public/assets/img/invoify-logo.svg",
   mainEntityOfPage: {
     "@type": "WebPage",
     "@id": `${BASE_URL}/#website`,

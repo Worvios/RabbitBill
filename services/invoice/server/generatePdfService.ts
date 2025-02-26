@@ -17,18 +17,20 @@ export async function generatePdfService(req: NextRequest) {
       InvoiceTemplate(body)
     );
 
-    const puppeteer = await import("puppeteer");
-
-    // Browser launch configuration remains the same
     if (ENV === "production") {
-      browser = await puppeteer.launch({
+      // In production, use puppeteer-core and @sparticuz/chromium
+      const puppeteerCore = await import("puppeteer-core");
+      browser = await puppeteerCore.launch({
         args: chromium.args,
         defaultViewport: chromium.defaultViewport,
         executablePath: await chromium.executablePath(CHROMIUM_EXECUTABLE_PATH),
         headless: true,
+        // TypeScript doesn't recognize ignoreHTTPSErrors so we cast options as any
         ignoreHTTPSErrors: true,
-      });
+      } as any);
     } else {
+      // In development, use the full puppeteer package
+      const puppeteer = await import("puppeteer");
       browser = await puppeteer.launch({
         args: ["--no-sandbox", "--disable-setuid-sandbox"],
         headless: true,
@@ -39,34 +41,32 @@ export async function generatePdfService(req: NextRequest) {
 
     const page = await browser.newPage();
 
-    // Critical changes start here
-    await page.emulateMediaType("print"); // Ensure print media queries are respected
+    // Emulate print media and set the page content
+    await page.emulateMediaType("print");
     await page.setContent(htmlTemplate, {
       waitUntil: "networkidle0",
-      timeout: 30000, // Increased timeout for complex layouts
+      timeout: 30000,
     });
 
-    // Add Tailwind CSS with proper waiting
+    // Add Tailwind CSS and wait for it to load
     await Promise.all([
       page.addStyleTag({ url: TAILWIND_CDN }),
-      page.waitForNetworkIdle(), // Ensure CSS is fully loaded
+      page.waitForNetworkIdle(),
     ]);
 
-    // Configure PDF generation for multi-page support
-    // In generatePdfService function
+    // Generate the PDF with the desired configurations
     const pdf = await page.pdf({
       format: "a4",
       printBackground: true,
       margin: {
-        top: "10px", // Match header height
-        bottom: "80px", // Match footer height
+        top: "10px",
+        bottom: "80px",
         left: "20px",
         right: "20px",
       },
-      //displayHeaderFooter: false, // Disable Puppeteer's native header/footer
     });
 
-    // Cleanup
+    // Cleanup: Close all pages and the browser instance
     const pages = await browser.pages();
     await Promise.all(pages.map((pg) => pg.close()));
     await browser.close();

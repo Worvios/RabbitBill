@@ -74,7 +74,7 @@ const BaseFooter = () => {
 
         {/* All Rights Reserved */}
         <p className="text-xs text-gray-500">
-          © {new Date().getFullYear()} Rabi Chbibi. {_t("All Rights Reserved")}
+          © {new Date().getFullYear()} Rabi Chbibi. All Rights Reserved
         </p>
       </div>
     </footer>

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import chromium from "@sparticuz/chromium";
 import { getInvoiceTemplate } from "@/lib/helpers";
-import { CHROMIUM_EXECUTABLE_PATH, ENV, TAILWIND_CDN } from "@/lib/variables";
+import { ENV, TAILWIND_CDN } from "@/lib/variables";
 import { InvoiceType } from "@/types";
 
 export async function generatePdfService(req: NextRequest) {
@@ -12,7 +12,6 @@ export async function generatePdfService(req: NextRequest) {
     const ReactDOMServer = (await import("react-dom/server")).default;
     const templateId = body.details.pdfTemplate;
     const InvoiceTemplate = await getInvoiceTemplate(templateId);
-
     const htmlTemplate = ReactDOMServer.renderToStaticMarkup(
       InvoiceTemplate(body)
     );
@@ -23,13 +22,13 @@ export async function generatePdfService(req: NextRequest) {
       browser = await puppeteerCore.launch({
         args: chromium.args,
         defaultViewport: chromium.defaultViewport,
-        executablePath: await chromium.executablePath(CHROMIUM_EXECUTABLE_PATH),
+        executablePath: await chromium.executablePath, // Fixed: await the property directly
         headless: true,
-        // TypeScript doesn't recognize ignoreHTTPSErrors so we cast options as any
+        // Casting to 'any' to bypass TS type errors if necessary
         ignoreHTTPSErrors: true,
       } as any);
     } else {
-      // In development, use the full puppeteer package
+      // In development, use full puppeteer
       const puppeteer = await import("puppeteer");
       browser = await puppeteer.launch({
         args: ["--no-sandbox", "--disable-setuid-sandbox"],
@@ -54,7 +53,7 @@ export async function generatePdfService(req: NextRequest) {
       page.waitForNetworkIdle(),
     ]);
 
-    // Generate the PDF with the desired configurations
+    // Generate the PDF
     const pdf = await page.pdf({
       format: "a4",
       printBackground: true,
@@ -66,7 +65,7 @@ export async function generatePdfService(req: NextRequest) {
       },
     });
 
-    // Cleanup: Close all pages and the browser instance
+    // Cleanup: Close all pages and the browser
     const pages = await browser.pages();
     await Promise.all(pages.map((pg) => pg.close()));
     await browser.close();

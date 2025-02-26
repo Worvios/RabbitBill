@@ -1,3 +1,4 @@
+// app/layout.tsx
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
@@ -77,7 +78,7 @@ export default async function LocaleLayout({
   }
 
   return (
-    <html lang={locale}>
+    <html lang={locale} suppressHydrationWarning>
       <head>
         <script
           type="application/ld+json"
@@ -86,14 +87,21 @@ export default async function LocaleLayout({
         />
       </head>
       <body
-        className={`${outfit.className} ${dancingScript.variable} ${parisienne.variable} ${greatVibes.variable} ${alexBrush.variable} antialiased bg-slate-100 dark:bg-slate-800`}
+        className={`${outfit.className} ${dancingScript.variable} ${parisienne.variable} ${greatVibes.variable} ${alexBrush.variable} antialiased`}
       >
         <NextIntlClientProvider locale={locale} messages={messages}>
           <Providers>
+            {/* Navbar */}
             <BaseNavbar />
 
-            <div className="flex flex-col">{children}</div>
+            {/* Main Content */}
+            <div className="pt-24">
+              {" "}
+              {/* Add padding to avoid overlap with Navbar */}
+              {children}
+            </div>
 
+            {/* Footer */}
             <BaseFooter />
 
             {/* Toast component */}

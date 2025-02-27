@@ -41,13 +41,13 @@ export async function generatePdfService(req: NextRequest) {
     // Launch the browser in production or development mode depending on the environment
     if (ENV === "production") {
       const puppeteer = await import("puppeteer-core");
-      let execPath: string;
 
-      if (typeof chromium.executablePath === "function") {
-        execPath = await chromium.executablePath(CHROMIUM_EXECUTABLE_PATH);
-      } else {
-        // Use type assertion to force the type to string
-        execPath = chromium.executablePath as unknown as string;
+      // Get executablePath without passing an argument; fallback to CHROMIUM_EXECUTABLE_PATH if needed
+      let execPath: string =
+        (await chromium.executablePath()) || CHROMIUM_EXECUTABLE_PATH;
+
+      if (!execPath) {
+        throw new Error("No executablePath available for puppeteer-core");
       }
 
       browser = await puppeteer.launch({

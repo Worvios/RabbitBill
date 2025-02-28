@@ -41,11 +41,9 @@ export async function generatePdfService(req: NextRequest) {
     // Launch the browser in production or development mode depending on the environment
     if (ENV === "production") {
       const puppeteer = await import("puppeteer-core");
-
-      // Retrieve the executablePath using @sparticuz/chromium.
-      // You can pass CHROMIUM_EXECUTABLE_PATH as an argument if needed, e.g.:
-      // const execPath = await chromium.executablePath(CHROMIUM_EXECUTABLE_PATH);
+      // Use executablePath as a property, not a function
       const execPath = await chromium.executablePath();
+
       if (!execPath) {
         throw new Error("No executablePath available for puppeteer-core");
       }
@@ -54,10 +52,7 @@ export async function generatePdfService(req: NextRequest) {
         args: chromium.args,
         defaultViewport: chromium.defaultViewport,
         executablePath: execPath,
-        headless:
-          chromium.headless === "chrome-headless-shell"
-            ? true
-            : chromium.headless, // Use the provided headless setting
+        headless: chromium.headless as boolean,
         ignoreHTTPSErrors: true,
       });
     } else if (ENV === "development") {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-// Chromium
+// Chromium – import as a namespace to ensure proper access to its exports
 import chromium from "@sparticuz/chromium";
 
 // Helpers
@@ -42,10 +42,10 @@ export async function generatePdfService(req: NextRequest) {
     if (ENV === "production") {
       const puppeteer = await import("puppeteer-core");
 
-      // Get executablePath without passing an argument; fallback to CHROMIUM_EXECUTABLE_PATH if needed
-      let execPath: string =
-        (await chromium.executablePath()) || CHROMIUM_EXECUTABLE_PATH;
-
+      // Retrieve the executablePath using @sparticuz/chromium.
+      // You can pass CHROMIUM_EXECUTABLE_PATH as an argument if needed, e.g.:
+      // const execPath = await chromium.executablePath(CHROMIUM_EXECUTABLE_PATH);
+      const execPath = await chromium.executablePath();
       if (!execPath) {
         throw new Error("No executablePath available for puppeteer-core");
       }
@@ -54,7 +54,11 @@ export async function generatePdfService(req: NextRequest) {
         args: chromium.args,
         defaultViewport: chromium.defaultViewport,
         executablePath: execPath,
-        headless: true,
+        headless:
+          chromium.headless === "chrome-headless-shell"
+            ? true
+            : chromium.headless, // Use the provided headless setting
+        ignoreHTTPSErrors: true,
       });
     } else if (ENV === "development") {
       const puppeteer = await import("puppeteer");
@@ -69,20 +73,19 @@ export async function generatePdfService(req: NextRequest) {
     }
 
     const page = await browser.newPage();
-    console.log("Page opened"); // Debugging log
+    console.log("Page opened"); // Debug log
 
     // Set the HTML content of the page
-    await page.setContent(await htmlTemplate, {
-      // * "waitUntil" prop makes fonts work in templates
+    await page.setContent(htmlTemplate, {
       waitUntil: "networkidle0",
     });
-    console.log("Page content set"); // Debugging log
+    console.log("Page content set"); // Debug log
 
     // Add Tailwind CSS
     await page.addStyleTag({
       url: TAILWIND_CDN,
     });
-    console.log("Style tag added"); // Debugging log
+    console.log("Style tag added"); // Debug log
 
     // Generate the PDF
     const pdf = await page.pdf({
@@ -95,8 +98,7 @@ export async function generatePdfService(req: NextRequest) {
         right: "20px",
       },
     });
-
-    console.log("PDF generated"); // Debugging log
+    console.log("PDF generated"); // Debug log
 
     for (const page of await browser.pages()) {
       await page.close();
@@ -104,24 +106,20 @@ export async function generatePdfService(req: NextRequest) {
 
     // Close the Puppeteer browser
     await browser.close();
-    console.log("Browser closed"); // Debugging log
+    console.log("Browser closed"); // Debug log
 
     // Create a Blob from the PDF data
     const pdfBlob = new Blob([pdf], { type: "application/pdf" });
 
-    const response = new NextResponse(pdfBlob, {
+    return new NextResponse(pdfBlob, {
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": "inline; filename=invoice.pdf",
       },
       status: 200,
     });
-
-    return response;
   } catch (error) {
     console.error(error);
-
-    // Return an error response
     return new NextResponse(`Error generating PDF: \n${error}`, {
       status: 500,
     });

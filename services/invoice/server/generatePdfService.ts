@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 
-// Chromium – import as a namespace to ensure proper access to its exports
+// Chromium – importing correctly to ensure proper access to its exports
 import chromium from "@sparticuz/chromium";
 
 // Helpers
 import { getInvoiceTemplate } from "@/lib/helpers";
 
 // Variables
-import { CHROMIUM_EXECUTABLE_PATH, ENV, TAILWIND_CDN } from "@/lib/variables";
+import { ENV, TAILWIND_CDN } from "@/lib/variables";
 
 // Types
 import { InvoiceType } from "@/types";
@@ -16,11 +16,13 @@ import { InvoiceType } from "@/types";
  * Generate a PDF document of an invoice based on the provided data.
  *
  * @async
- * @param {NextRequest} req - The Next.js request object.
+ * @param req - The Next.js request object.
  * @throws {Error} If there is an error during the PDF generation process.
- * @returns {Promise<NextResponse>} A promise that resolves to a NextResponse object containing the generated PDF.
+ * @returns A promise that resolves to a NextResponse object containing the generated PDF.
  */
-export async function generatePdfService(req: NextRequest) {
+export async function generatePdfService(
+  req: NextRequest
+): Promise<NextResponse> {
   const body: InvoiceType = await req.json();
 
   // Create a browser instance
@@ -29,7 +31,7 @@ export async function generatePdfService(req: NextRequest) {
   try {
     const ReactDOMServer = (await import("react-dom/server")).default;
 
-    // Get the selected invoice template
+    const execPath = chromium.executablePath;
     const templateId = body.details.pdfTemplate;
     const InvoiceTemplate = await getInvoiceTemplate(templateId);
 
@@ -41,7 +43,8 @@ export async function generatePdfService(req: NextRequest) {
     // Launch the browser in production or development mode depending on the environment
     if (ENV === "production") {
       const puppeteer = await import("puppeteer-core");
-      // Use executablePath as a property, not a function
+
+      // Using proper API for @sparticuz/chromium v122
       const execPath = await chromium.executablePath();
 
       if (!execPath) {
@@ -52,14 +55,14 @@ export async function generatePdfService(req: NextRequest) {
         args: chromium.args,
         defaultViewport: chromium.defaultViewport,
         executablePath: execPath,
-        headless: chromium.headless as boolean,
+        headless: true, // Using the headless mode for Puppeteer
         ignoreHTTPSErrors: true,
       });
     } else if (ENV === "development") {
       const puppeteer = await import("puppeteer");
       browser = await puppeteer.launch({
         args: ["--no-sandbox", "--disable-setuid-sandbox"],
-        headless: true,
+        headless: true, // Using the headless mode for Puppeteer
       });
     }
 
@@ -95,6 +98,7 @@ export async function generatePdfService(req: NextRequest) {
     });
     console.log("PDF generated"); // Debug log
 
+    // Close all pages before closing the browser
     for (const page of await browser.pages()) {
       await page.close();
     }
@@ -115,12 +119,17 @@ export async function generatePdfService(req: NextRequest) {
     });
   } catch (error) {
     console.error(error);
-    return new NextResponse(`Error generating PDF: \n${error}`, {
+    return new NextResponse(`Error generating PDF: ${error}`, {
       status: 500,
     });
   } finally {
+    // Ensure browser is closed even if an error occurs
     if (browser) {
-      await Promise.race([browser.close(), browser.close(), browser.close()]);
+      try {
+        await browser.close();
+      } catch (error) {
+        console.error("Error closing browser:", error);
+      }
     }
   }
 }
